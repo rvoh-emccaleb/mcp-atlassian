@@ -21,8 +21,6 @@ confluence_fetcher = ConfluenceFetcher()
 jira_fetcher = JiraFetcher()
 app = Server("mcp-atlassian")
 
-logger.info("Creating MCP server...")
-
 @app.list_resources()
 async def list_resources() -> list[Resource]:
     """List available Confluence spaces and Jira projects as resources."""
