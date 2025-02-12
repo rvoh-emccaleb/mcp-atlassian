@@ -25,7 +25,7 @@ pip install -e .
 
 ## Standard Input/Output (stdio) Mode
 
-This is used, for example, when configuring this MCP server to be used with Claude Desktop. As of the time of this writing, Claude Desktop does not support the HTTP mode.
+This is used, for example, when configuring this MCP server to be used with Claude Desktop. As of the time of this writing, Claude Desktop does not support HTTP mode.
 
 1. Run the MCP server in Standard Input/Output (stdio) mode
     ```bash
