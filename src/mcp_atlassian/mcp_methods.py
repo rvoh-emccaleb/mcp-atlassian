@@ -4,25 +4,27 @@ from collections.abc import Sequence
 from typing import Any
 
 from mcp.server import Server
-from mcp.types import Resource, TextContent, Tool
+from mcp.types import (
+    Resource, 
+    TextContent, 
+    Tool,
+)
 from pydantic import AnyUrl
 
 from .confluence import ConfluenceFetcher
 from .jira import JiraFetcher
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("mcp-atlassian")
+logger = logging.getLogger(__name__)
 
-# Initialize the content fetchers
+# Initialize the content fetchers and server
 confluence_fetcher = ConfluenceFetcher()
 jira_fetcher = JiraFetcher()
 app = Server("mcp-atlassian")
 
-
 @app.list_resources()
 async def list_resources() -> list[Resource]:
     """List available Confluence spaces and Jira projects as resources."""
+    logger.debug("Listing resources...")
     resources = []
 
     # Add Confluence spaces
@@ -40,6 +42,7 @@ async def list_resources() -> list[Resource]:
                 for space in spaces
             ]
         )
+        logger.debug("Found %d Confluence spaces", len(spaces))
 
     # Add Jira projects
     try:
@@ -55,9 +58,22 @@ async def list_resources() -> list[Resource]:
                 for project in projects
             ]
         )
+        logger.debug("Found %d Jira projects", len(projects))
+        
     except Exception as e:
-        logger.error(f"Error fetching Jira projects: {str(e)}")
+        if hasattr(e, 'response'):
+            logger.error(
+                "Error fetching Jira projects: HTTP %s - %s (%s)", 
+                e.response.status_code if hasattr(e, 'response') else 'Unknown',
+                str(e) or "No error message", 
+                type(e).__name__
+            )
+            logger.debug("Response content: %s", e.response.text if hasattr(e, 'response') else 'No response content')
+        else:
+            logger.error("Error fetching Jira projects: %s (%s)", str(e) or "No error message", type(e).__name__)
+        logger.debug("Exception details:", exc_info=True)
 
+    logger.info("Listed %d total resources", len(resources))
     return resources
 
 
@@ -215,8 +231,11 @@ async def list_tools() -> list[Tool]:
 async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
     """Handle tool calls for Confluence and Jira operations."""
     try:
+        logger.debug("Executing tool '%s' with arguments: %s", name, arguments)
+        
         if name == "confluence_search":
             limit = min(int(arguments.get("limit", 10)), 50)
+            logger.debug("Searching Confluence with query: %s (limit: %d)", arguments["query"], limit)
             documents = confluence_fetcher.search(arguments["query"], limit)
             search_results = [
                 {
@@ -230,10 +249,11 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
                 }
                 for doc in documents
             ]
-
+            logger.debug("Found %d Confluence search results", len(search_results))
             return [TextContent(type="text", text=json.dumps(search_results, indent=2))]
 
         elif name == "confluence_get_page":
+            logger.debug("Fetching Confluence page: %s", arguments["page_id"])
             doc = confluence_fetcher.get_page_content(arguments["page_id"])
             include_metadata = arguments.get("include_metadata", True)
 
@@ -245,6 +265,7 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
             return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
         elif name == "confluence_get_comments":
+            logger.debug("Fetching comments for page: %s", arguments["page_id"])
             comments = confluence_fetcher.get_page_comments(arguments["page_id"])
             formatted_comments = [
                 {
@@ -254,16 +275,18 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
                 }
                 for comment in comments
             ]
-
+            logger.debug("Found %d comments", len(formatted_comments))
             return [TextContent(type="text", text=json.dumps(formatted_comments, indent=2))]
 
         elif name == "jira_get_issue":
+            logger.debug("Fetching Jira issue: %s", arguments["issue_key"])
             doc = jira_fetcher.get_issue(arguments["issue_key"], expand=arguments.get("expand"))
             result = {"content": doc.page_content, "metadata": doc.metadata}
             return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
         elif name == "jira_search":
             limit = min(int(arguments.get("limit", 10)), 50)
+            logger.debug("Searching Jira with JQL: %s (limit: %d)", arguments["jql"], limit)
             documents = jira_fetcher.search_issues(
                 arguments["jql"], fields=arguments.get("fields", "*all"), limit=limit
             )
@@ -280,10 +303,12 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
                 }
                 for doc in documents
             ]
+            logger.debug("Found %d Jira search results", len(search_results))
             return [TextContent(type="text", text=json.dumps(search_results, indent=2))]
 
         elif name == "jira_get_project_issues":
             limit = min(int(arguments.get("limit", 10)), 50)
+            logger.debug("Fetching issues for project: %s (limit: %d)", arguments["project_key"], limit)
             documents = jira_fetcher.get_project_issues(arguments["project_key"], limit=limit)
             project_issues = [
                 {
@@ -296,24 +321,21 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
                 }
                 for doc in documents
             ]
+            logger.debug("Found %d project issues", len(project_issues))
             return [TextContent(type="text", text=json.dumps(project_issues, indent=2))]
 
         raise ValueError(f"Unknown tool: {name}")
 
     except Exception as e:
-        logger.error(f"Tool execution error: {str(e)}")
+        if hasattr(e, 'response'):
+            logger.error(
+                "Tool execution error: HTTP %s - %s (%s)", 
+                e.response.status_code if hasattr(e, 'response') else 'Unknown',
+                str(e) or "No error message", 
+                type(e).__name__
+            )
+            logger.debug("Response content: %s", e.response.text if hasattr(e, 'response') else 'No response content')
+        else:
+            logger.error("Tool execution error: %s (%s)", str(e) or "No error message", type(e).__name__)
+        logger.debug("Exception details:", exc_info=True)
         raise RuntimeError(f"Tool execution failed: {str(e)}")
-
-
-async def main():
-    # Import here to avoid issues with event loops
-    from mcp.server.stdio import stdio_server
-
-    async with stdio_server() as (read_stream, write_stream):
-        await app.run(read_stream, write_stream, app.create_initialization_options())
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(main())
