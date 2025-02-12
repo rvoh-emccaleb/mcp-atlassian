@@ -22,4 +22,4 @@ def main():
     asyncio.run(run_stdio_server())
 
 if __name__ == "__main__":
-    main() 
+    main()
