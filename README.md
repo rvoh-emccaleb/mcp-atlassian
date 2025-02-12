@@ -2,130 +2,141 @@
 
 Model Context Protocol (MCP) server for Atlassian Cloud products (Confluence and Jira). This integration is designed specifically for Atlassian Cloud instances and does not support Atlassian Server or Data Center deployments.
 
-<a href="https://glama.ai/mcp/servers/kc33m1kh5m"><img width="380" height="200" src="https://glama.ai/mcp/servers/kc33m1kh5m/badge" alt="Atlassian MCP server" /></a>
+This is a fork of the [mcp-atlassian](https://github.com/sooperset/mcp-atlassian) repo. Here is a link to its [README](https://github.com/sooperset/mcp-atlassian/blob/main/README.md). Those details have been omitted, here.
 
-## Feature Demo
-![Demo](https://github.com/user-attachments/assets/995d96a8-4cf3-4a03-abe1-a9f6aea27ac0)
+## Initial Setup
 
-## Features
+```bash
+cd <root-of-this-repo>
+    
+activate # Activate your Python virtual environment
 
-- Search and read Confluence spaces/pages
-- Get Confluence page comments
-- Search and read Jira issues
-- Get project issues and metadata
-
-## API
-
-### Resources
-
-- `confluence://{space_key}`: Access Confluence spaces and pages
-- `confluence://{space_key}/pages/{title}`: Access specific Confluence pages
-- `jira://{project_key}`: Access Jira project and its issues
-- `jira://{project_key}/issues/{issue_key}`: Access specific Jira issues
-
-### Tools
-
-#### Confluence Tools
-
-- **confluence_search**
-  - Search Confluence content using CQL
-  - Inputs:
-    - `query` (string): CQL query string
-    - `limit` (number, optional): Results limit (1-50, default: 10)
-  - Returns:
-    - Array of search results with page_id, title, space, url, last_modified, type, and excerpt
-
-- **confluence_get_page**
-  - Get content of a specific Confluence page
-  - Inputs:
-    - `page_id` (string): Confluence page ID
-    - `include_metadata` (boolean, optional): Include page metadata (default: true)
-
-- **confluence_get_comments**
-  - Get comments for a specific Confluence page
-  - Input: `page_id` (string)
-
-#### Jira Tools
-
-- **jira_get_issue**
-  - Get details of a specific Jira issue
-  - Inputs:
-    - `issue_key` (string): Jira issue key (e.g., 'PROJ-123')
-    - `expand` (string, optional): Fields to expand
-
-- **jira_search**
-  - Search Jira issues using JQL
-  - Inputs:
-    - `jql` (string): JQL query string
-    - `fields` (string, optional): Comma-separated fields (default: "*all")
-    - `limit` (number, optional): Results limit (1-50, default: 10)
-
-- **jira_get_project_issues**
-  - Get all issues for a specific Jira project
-  - Inputs:
-    - `project_key` (string): Project key
-    - `limit` (number, optional): Results limit (1-50, default: 10)
-
-## Usage with Claude Desktop
-
-1. Get API tokens from: https://id.atlassian.com/manage-profile/security/api-tokens
-
-2. Add to your `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "mcp-atlassian": {
-      "command": "uvx",
-      "args": ["mcp-atlassian"],
-      "env": {
-        "CONFLUENCE_URL": "https://your-domain.atlassian.net/wiki",
-        "CONFLUENCE_USERNAME": "your.email@domain.com",
-        "CONFLUENCE_API_TOKEN": "your_api_token",
-        "JIRA_URL": "https://your-domain.atlassian.net",
-        "JIRA_USERNAME": "your.email@domain.com",
-        "JIRA_API_TOKEN": "your_api_token"
-      }
-    }
-  }
-}
+pip install -e .
 ```
 
-<details>
-<summary>Alternative configuration using <code>uv</code></summary>
+#### Required Environment Variables
 
-```json
-{
-  "mcpServers": {
-    "mcp-atlassian": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "/path/to/mcp-atlassian",
-        "run",
-        "mcp-atlassian"
-      ],
-      "env": {
-        "CONFLUENCE_URL": "https://your-domain.atlassian.net/wiki",
-        "CONFLUENCE_USERNAME": "your.email@domain.com",
-        "CONFLUENCE_API_TOKEN": "your_api_token",
-        "JIRA_URL": "https://your-domain.atlassian.net",
-        "JIRA_USERNAME": "your.email@domain.com",
-        "JIRA_API_TOKEN": "your_api_token"
-      }
-    }
-  }
-}
-```
-Replace `/path/to/mcp-atlassian` with the actual path where you've cloned the repository.
-</details>
+- `CONFLUENCE_URL`: Confluence instance URL. Likely `https://rvohealth.atlassian.net/wiki`.
+- `CONFLUENCE_USERNAME`: Confluence username. Likely paired with API token.
+- `CONFLUENCE_API_TOKEN`: Confluence API token with read access to the desired spaces.
+- `JIRA_URL`: Jira instance URL. Likely `https://rvohealth.atlassian.net`.
+- `JIRA_USERNAME`: Jira username. Likely paired with API token.
+- `JIRA_API_TOKEN`: Jira API token with read access to the desired projects.
 
+## Standard Input/Output (stdio) Mode
 
-## Security
+This is used, for example, when configuring this MCP server to be used with Claude Desktop. As of the time of this writing, Claude Desktop does not support the HTTP mode.
 
-- Never share API tokens
-- Keep .env files secure and private
-- See [SECURITY.md](SECURITY.md) for best practices
+1. Run the MCP server in Standard Input/Output (stdio) mode
+    ```bash
+    python -m mcp_atlassian --stdio
+    ```
+
+## HTTP Mode
+
+This example uses `curl` to interact with the MCP server. You can also view our [example_client.py](example_client.py) for an example of how to call the MCP server using the `ClientSession` class.
+
+Note: It may be useful to review the [MCP Connection Lifecycle docs](https://modelcontextprotocol.io/docs/concepts/architecture#connection-lifecycle).
+
+1. Run the MCP server in HTTP mode
+    ```bash
+    python -m mcp_atlassian --http
+    ```
+
+1. Begin initialization handshake
+    ```bash
+    curl -X POST http://localhost:8000/mcp \
+      -H "Content-Type: application/json" \
+      -d '{
+        "jsonrpc": "2.0",
+        "id": 1,                              
+        "method": "initialize",
+        "params": {
+          "protocolVersion": "2024-11-05",
+          "capabilities": {},
+          "clientInfo": {
+            "name": "test-client",
+            "version": "v0.0.0"
+          }
+        }
+      }'
+    ```
+
+1. Finish initialization handshake
+    ```bash
+    curl -X POST http://localhost:8000/mcp \
+      -H "Content-Type: application/json" \
+      -d '{
+        "jsonrpc": "2.0",
+        "method": "notifications/initialized",
+        "params": {}           
+      }'
+    ```
+
+1. List available MCP tools
+    ```bash
+    curl -X POST http://localhost:8000/mcp \
+      -H "Content-Type: application/json" \
+      -d '{
+        "jsonrpc": "2.0",
+        "id": 3,                              
+        "method": "tools/list",
+        "params": {}           
+      }'
+    ```
+
+1. List available MCP resources
+    ```bash
+    curl -X POST http://localhost:8000/mcp \
+      -H "Content-Type: application/json" \
+      -d '{
+        "jsonrpc": "2.0",
+        "id": 2,                              
+        "method": "resources/list",
+        "params": {}           
+      }'
+    ```
+
+1. Use one of the available MCP tools
+    ```bash
+    curl -X POST http://localhost:8000/mcp \
+      -H "Content-Type: application/json" \
+      -d '{
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "tools/call",
+        "params": {
+          "name": "confluence_search",
+          "arguments": {
+              "query": "space = DAP AND text ~ \"eval\" order by lastmodified DESC",
+              "limit": 10
+          }
+        }
+      }'
+    ```
+
+1. Read one of the available MCP resources
+    
+    > Note: Normally, you would expect to be able to use the `resources/read` method on a `uri` returned in the MCP server's `resources/list` response. However, this server seems to be somewhat broken on that front.
+    >
+    > Instead, it's advised to use the `tools/call` method to call the `confluence_get_page` tool with the desired `page_id`, which can be obtained by the `confluence_search` tool.
+    
+    ```bash
+    curl -X POST http://localhost:8000/mcp \
+      -H "Content-Type: application/json" \
+      -d '{
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "tools/call",
+        "params": {
+          "name": "confluence_get_page",
+          "arguments": {
+              "page_id": "1150648415",              
+              "include_metadata": true
+          }
+        }
+      }'
+    ```
 
 ## License
 

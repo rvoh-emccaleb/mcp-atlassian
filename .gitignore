@@ -57,3 +57,5 @@ local/
 
 # Credentials
 .pypirc
+
+.cursorignore

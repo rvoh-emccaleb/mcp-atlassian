@@ -6,7 +6,7 @@ from typing import Tuple
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 
-logger = logging.getLogger("mcp-atlassian")
+logger = logging.getLogger(__name__)
 
 
 class TextPreprocessor:

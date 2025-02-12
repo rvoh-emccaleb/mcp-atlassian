@@ -12,8 +12,7 @@ from .types import Document
 # Load environment variables
 load_dotenv()
 
-# Configure logging
-logger = logging.getLogger("mcp-atlassian")
+logger = logging.getLogger(__name__)
 
 
 class ConfluenceFetcher:

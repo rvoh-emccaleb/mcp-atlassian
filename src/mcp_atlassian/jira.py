@@ -13,8 +13,7 @@ from .types import Document
 # Load environment variables
 load_dotenv()
 
-# Configure logging
-logger = logging.getLogger("mcp-jira")
+logger = logging.getLogger(__name__)
 
 
 class JiraFetcher:
