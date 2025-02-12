@@ -14,7 +14,6 @@ from pydantic import AnyUrl
 from .confluence import ConfluenceFetcher
 from .jira import JiraFetcher
 
-# Configure logger for this module
 logger = logging.getLogger(__name__)
 
 # Initialize the content fetchers and server

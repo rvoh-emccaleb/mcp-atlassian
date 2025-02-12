@@ -25,7 +25,6 @@ def validate_initialize_params(params: Dict[str, Any]) -> None:
             }
         )
 
-    # Type validations
     if not isinstance(params["protocolVersion"], str):
         raise HTTPException(
             status_code=400,

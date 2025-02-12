@@ -11,10 +11,8 @@ from mcp.types import (
 from anyio import create_memory_object_stream
 import logging
 from .validation import validate_request
-
 from .mcp_methods import app as mcp_app
 
-# Configure logger for this module
 logger = logging.getLogger(__name__)
 
 # Create two pairs of streams - one for each direction
@@ -32,10 +30,8 @@ async def lifespan(app: FastAPI):
     
     async def server_runner():
         try:
-            # Signal that we're about to start the server
             await status_queue.put("starting")
                         
-            # Get initialization options from the app
             init_options = mcp_app.create_initialization_options(
                 notification_options=mcp_app.notification_options,
                 experimental_capabilities={}
@@ -58,7 +54,6 @@ async def lifespan(app: FastAPI):
             logger.error("Server error: %s", e)
             await status_queue.put(f"error: {e}")
     
-    # Start the server task
     server_task = asyncio.create_task(server_runner())
     logger.debug("MCP server task created")
     
@@ -75,7 +70,6 @@ async def lifespan(app: FastAPI):
     yield  # Server runs during this yield
     
     logger.info("Shutting down MCP server...")
-    # Shutdown: cleanup the MCP server task
     if server_task and not server_task.done():
         server_task.cancel()
         try:
@@ -86,7 +80,6 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error("Error shutting down MCP server: %s", e)
 
-# Create FastAPI app with lifespan manager
 api = FastAPI(title="MCP Atlassian HTTP Server", lifespan=lifespan)
 
 @api.post("/mcp")
@@ -100,10 +93,7 @@ async def handle_mcp_request(
     If it doesn't have an id, it's a JSONRPCNotification and doesn't expect a response.
     """
     try:
-        # Validate request params based on method
         validate_request(request.method, request.params)
-
-        # Create the JSON-RPC request (params are already validated)
         message = JSONRPCMessage(root=request)
 
         logger.debug("Received request - Method: %s, Params: %s", request.method, request.params)
@@ -112,22 +102,17 @@ async def handle_mcp_request(
         else:
             logger.debug("Request type: Notification (no id)")
         
-        # Send the message to the MCP server
-        logger.debug("Sending message to server")
         await client_to_server_send.send(message)
         logger.debug("Message sent to server")
-
         # If this was a notification (no id), return None
         if isinstance(request, JSONRPCNotification):
             return None
 
-        # For regular requests, wait for the response
         try:
             logger.debug("Waiting for response from server")
-            # Add timeout to prevent infinite wait
             response = await asyncio.wait_for(
                 server_to_client_receive.receive(),
-                timeout=5.0  # 5 second timeout
+                timeout=5.0  # 5 seconds
             )
             logger.debug("Response received from server")
             
@@ -135,7 +120,6 @@ async def handle_mcp_request(
                 logger.error("Got exception response: %s", response)
                 raise response
             
-            # Extract the JSONRPCResponse from the message
             if isinstance(response, JSONRPCMessage):
                 jsonrpc_response = response.root
                 if isinstance(jsonrpc_response, JSONRPCResponse):
@@ -145,7 +129,6 @@ async def handle_mcp_request(
                         result=jsonrpc_response.result
                     )
             
-            # If we get here, something unexpected happened
             raise ValueError(f"Unexpected response type: {type(response)}")
             
         except asyncio.TimeoutError:
@@ -154,7 +137,6 @@ async def handle_mcp_request(
 
     except Exception as e:
         logger.error("Error handling request: %s", e)
-        # Handle errors by returning a proper JSON-RPC error response
         if isinstance(request, JSONRPCRequest):
             return JSONRPCResponse(
                 jsonrpc="2.0",

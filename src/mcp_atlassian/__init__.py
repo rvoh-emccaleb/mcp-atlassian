@@ -1,6 +1,5 @@
 import argparse
 import logging
-import sys
 from typing import Optional
 
 __version__ = "0.1.7"
@@ -12,11 +11,9 @@ def main(mode: Optional[str] = None):
     Args:
         mode: Either 'http' or 'stdio' (default based on arguments)
     """
-    # Set up basic logging
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     
-    # Determine mode from arguments if not specified
     if mode is None:
         parser = argparse.ArgumentParser(description='MCP Atlassian Server')
         group = parser.add_mutually_exclusive_group(required=True)
@@ -34,5 +31,4 @@ def main(mode: Optional[str] = None):
         from .stdio_server import main
         main()
 
-# Only export what's necessary at module level
 __all__ = ["main", "__version__"]
