@@ -92,6 +92,9 @@ async def handle_mcp_request(
     If the request has an id, it's a JSONRPCRequest and expects a response.
     If it doesn't have an id, it's a JSONRPCNotification and doesn't expect a response.
     """
+
+    logger.debug("MCP request received: %s", request.model_dump_json()) 
+    
     try:
         validate_request(request.method, request.params)
         message = JSONRPCMessage(root=request)

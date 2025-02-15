@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 from typing import Optional
 
 __version__ = "0.1.7"
@@ -11,7 +12,8 @@ def main(mode: Optional[str] = None):
     Args:
         mode: Either 'http' or 'stdio' (default based on arguments)
     """
-    logging.basicConfig(level=logging.INFO)
+    log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
+    logging.basicConfig(level=getattr(logging, log_level, logging.INFO))
     logger = logging.getLogger(__name__)
     
     if mode is None:
