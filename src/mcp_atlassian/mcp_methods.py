@@ -138,7 +138,110 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "CQL query string (e.g. 'type=page AND space=DEV')"},
+                    "query": {
+                        "type": "string", 
+                        "description": """CQL (Confluence Query Language) query string (e.g. 'type=page AND space=DEV').
+
+Note, every query should have a "space" in it, otherwise it will likely
+return no results.
+
+Here is a list of spaces you can search for pages in, and their high-level names. You will use the value before the ':' in your query, e.g. DAP:
+- AO: AI Ops
+- DAP: AI Products
+- CoreProductsServices: Core Products & Services
+- OSS: Open Source Software
+- RP: Red Platform - Red Platform is a suite of technology products that enable data-driven and personalized experiences.
+- RA: RVO Auth
+- RBP: RVOH Best Practices
+- HPM: RVO Technical Project Management
+
+The "~" operator is used to search for content where the value of the specified field matches the specified value (either an exact match or a "fuzzy" match -- see examples below). The "~" operator can only be used with text fields, for example:
+- title
+- text
+
+Confluence supports single and multiple character wildcard searches. Wildcard characters need to be enclosed in quote-marks, as they are reserved characters in CQL.
+To perform a single character wildcard search use the "?" symbol.
+To perform a multiple character wildcard search use the "*" symbol.
+
+Some examples:
+
+Find all content where the title contains the word "win" (or simple derivatives of that word, such as "wins").
+title ~ win
+
+Find all content where the text containing "text" or "test" (not "tempt") you can use the search:
+text ~ "te?t"
+
+Find all content where the text contains a wild-card match for the word "win" (e.g Windows, Win95 or WindowsNT).
+text ~ "win*"
+
+Find all content where the text contains "Win95" or "Windows95" you can use the search:
+text ~ "wi*95"
+
+Find all content where the text contains the word "advanced" and the word "search".
+text ~ "advanced search"
+
+In CQL, searching for specific text within content requires the use of the text field combined with the ~ operator. Additionally, when combining multiple search terms, each term should be enclosed in double quotes and connected using the OR operator within the text field.
+For example:
+type=page AND space=HPM AND (text ~ "technical decisions" OR text ~ "engineering autonomy" OR text ~ "product engineering partnership")
+
+Some other CQL examples (all should also have `space = SPACE_NAME and type=page`):
+
+creator = "99:27935d01-XXXX-XXXX-XXXX-a9b8d3b2ae2e"
+
+title = "\"Advanced Searching\""
+
+not creator = "99:27935d01-XXXX-XXXX-XXXX-a9b8d3b2ae2e"
+
+creator != "99:27935d01-XXXX-XXXX-XXXX-a9b8d3b2ae2e"
+
+creator = currentUser() and mention != currentUser()
+
+Note: You do not need to escape these quotes in your queries for things like this.
+created > now("-4w")
+
+created > startOfMonth() and type = attachment
+
+created >= "2008/12/31"
+
+lastModified < startOfYear() and type = page
+
+created >= startOfWeek("-1w") and type = blogpost
+
+mention in ("99:27935d01-XXXX-XXXX-XXXX-a9b8d3b2ae2e", "48293:5s04-XXXX-XXXX-XXXX-d7a9b9d8c9f01", "2223:48d-3a-XXXX-XXXX-XXXX-8d9dd0e98as7")
+
+creator in ("99:27935d01-XXXX-XXXX-XXXX-a9b8d3b2ae2e", "48293:5s04-XXXX-XXXX-XXXX-d7a9b9d8c9f01") or contributor in ("99:27935d01-XXXX-XXXX-XXXX-a9b8d3b2ae2e", "48293:5s04-XXXX-XXXX-XXXX-d7a9b9d8c9f01")
+
+creator not in ("99:27935d01-XXXX-XXXX-XXXX-a9b8d3b2ae2e", "48293:5s04-XXXX-XXXX-XXXX-d7a9b9d8c9f01", "2223:48d-3a-XXXX-XXXX-XXXX-8d9dd0e98as7")
+
+creator.fullname ~ "alana"
+
+title ~ win
+
+title ~ "win*"
+
+text ~ "advanced search"
+
+title !~ run
+
+Find content in the DEV space ordered by creation date.
+order by created
+
+Find content in the DEV space ordered by creation date with the newest first, then title.
+order by created desc, title
+
+Find pages created by jsmith ordered by created, then title.
+creator = jsmith order by created, title asc
+
+Find all content created in the last 4 weeks. (Note: the quotes don't need escaping)
+created > now("-4w")
+
+Find all content created on or after 31/12/2008.
+created >= "2008/12/31"
+
+Find all pages lastModified before the start of the year.
+lastModified < startOfYear()
+"""
+                    },
                     "limit": {
                         "type": "number",
                         "description": "Maximum number of results (1-50)",
